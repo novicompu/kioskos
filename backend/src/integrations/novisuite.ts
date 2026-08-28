@@ -7,9 +7,11 @@ export interface NovisuiteWarehouse {
   friendly_name: string;
   coverage_id: number;
   // Opcionales: la API los va poblando bodega por bodega, no todas los
-  // traen todavia. Nunca asumir su presencia.
-  admin_name?: string | null;
-  public_address?: string | null;
+  // traen todavia. Nunca asumir su presencia. Nombres verificados contra
+  // la API real (no coinciden con los que se documentaron originalmente:
+  // admin_name/public_address -> administrator_name/contact_location).
+  administrator_name?: string | null;
+  contact_location?: string | null;
   contact_phone?: string | null;
 }
 

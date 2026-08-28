@@ -51,8 +51,8 @@ export async function kioskRoutes(app: FastifyInstance) {
         // El resto: la API es la fuente principal (mas fresca y ya viene
         // por bodega); KioskMeta queda como respaldo/override manual para
         // cuando la API todavia no la tenga.
-        address: nonBlank(warehouse.public_address) ?? nonBlank(meta?.address),
-        contactName: nonBlank(warehouse.admin_name) ?? nonBlank(meta?.contactName),
+        address: nonBlank(warehouse.contact_location) ?? nonBlank(meta?.address),
+        contactName: nonBlank(warehouse.administrator_name) ?? nonBlank(meta?.contactName),
         contactPhone: nonBlank(warehouse.contact_phone) ?? nonBlank(meta?.contactPhone),
       };
     });

@@ -13,8 +13,8 @@ export interface Warehouse {
   coverage_id: number;
   // Opcionales: la API los va poblando bodega por bodega, no todas los
   // traen todavia.
-  admin_name?: string | null;
-  public_address?: string | null;
+  administrator_name?: string | null;
+  contact_location?: string | null;
   contact_phone?: string | null;
 }
 
