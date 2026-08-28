@@ -8,6 +8,7 @@ import { Pagination } from "../components/Pagination";
 import { ProductCard } from "../components/ProductCard";
 import { ProductDetailSheet } from "../components/ProductDetailSheet";
 import { useGeolocation } from "../hooks/useGeolocation";
+import { useAppSettings } from "../hooks/useAppSettings";
 import { summarizeLocations } from "../lib/warehouse";
 import { SearchIcon, AlertIcon, MapPinIcon, BuildingIcon } from "../components/icons";
 
@@ -20,7 +21,8 @@ function isEnv(nombre: string): boolean {
 }
 
 export function Catalog() {
-  const geo = useGeolocation();
+  const { data: appSettings } = useAppSettings();
+  const geo = useGeolocation(appSettings?.allowManualLocation);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "price">("name");
   const [page, setPage] = useState(1);
@@ -90,7 +92,7 @@ export function Catalog() {
           </div>
         )}
 
-        {geo.status !== "pending" && (
+        {geo.status !== "pending" && appSettings?.allowManualLocation && (
           <div className="mb-5">
             <LocationOverride
               isManual={geo.status === "manual"}

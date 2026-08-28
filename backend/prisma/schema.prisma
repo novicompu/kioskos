@@ -45,6 +45,18 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+/// Configuracion global del sistema (fila unica, id fijo "global").
+/// Controlada por el superadmin.
+model SystemSettings {
+  id                  String   @id @default("global")
+  /// Si esta apagado, todos los usuarios quedan forzados a GPS real (se
+  /// ignora/borra cualquier ubicacion manual ya guardada localmente).
+  allowManualLocation Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
 /// Metadata local para una bodega/kiosko de Novisuite (ware_code) que la API
 /// externa no provee (supervisor, direccion legible, contacto). Se mantiene
 /// por seed/edicion manual hasta que exista un panel de administracion.

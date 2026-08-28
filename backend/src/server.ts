@@ -12,6 +12,7 @@ import { kioskRoutes } from "./routes/kiosks.js";
 import { mbaStatusRoutes } from "./routes/mbaStatus.js";
 import { startMbaStatusPolling } from "./lib/mbaStatus.js";
 import { adminUsersRoutes } from "./routes/adminUsers.js";
+import { settingsRoutes } from "./routes/settings.js";
 
 async function buildServer() {
   const app = Fastify({
@@ -46,6 +47,7 @@ async function buildServer() {
   await app.register(kioskRoutes);
   await app.register(mbaStatusRoutes);
   await app.register(adminUsersRoutes);
+  await app.register(settingsRoutes);
 
   startMbaStatusPolling();
 

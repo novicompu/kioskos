@@ -6,6 +6,7 @@ import { AppHeader } from "../components/AppHeader";
 import { LocationOverride } from "../components/LocationOverride";
 import { useAuth } from "../context/AuthContext";
 import { useGeolocation } from "../hooks/useGeolocation";
+import { useAppSettings } from "../hooks/useAppSettings";
 import {
   ChevronLeftIcon,
   UserIcon,
@@ -25,7 +26,8 @@ const CONFIG_ITEMS = [
 ];
 
 export function KioskInfo() {
-  const geo = useGeolocation();
+  const { data: appSettings } = useAppSettings();
+  const geo = useGeolocation(appSettings?.allowManualLocation);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const coords = geo.coords;
@@ -64,7 +66,7 @@ export function KioskInfo() {
               Contacto de las bodegas que abastecen tu ubicación.
             </p>
 
-            {geo.status !== "pending" && (
+            {geo.status !== "pending" && appSettings?.allowManualLocation && (
               <div className="mb-4">
                 <LocationOverride
                   isManual={geo.status === "manual"}

@@ -2,9 +2,10 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, getErrorMessage } from "../api/client";
-import type { ManagedUser, UsersListResponse, User } from "../api/types";
+import type { ManagedUser, UsersListResponse, User, SettingsResponse } from "../api/types";
 import { AppHeader } from "../components/AppHeader";
 import { generatePassword } from "../lib/passwordGenerator";
+import { useAppSettings } from "../hooks/useAppSettings";
 import {
   ChevronLeftIcon,
   UserIcon,
@@ -15,6 +16,7 @@ import {
   CopyIcon,
   CheckCircleIcon,
   AlertIcon,
+  MapPinIcon,
 } from "../components/icons";
 
 type Role = User["role"];
@@ -39,6 +41,17 @@ function RoleBadge({ role }: { role: Role }) {
 export function AdminUsers() {
   const queryClient = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
+
+  const { data: appSettings } = useAppSettings();
+  const updateSettings = useMutation({
+    mutationFn: async (allowManualLocation: boolean) => {
+      const { data } = await api.patch<SettingsResponse>("/admin/settings", { allowManualLocation });
+      return data.settings;
+    },
+    onSuccess: (settings) => {
+      queryClient.setQueryData(["app-settings"], settings);
+    },
+  });
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -139,6 +152,36 @@ export function AdminUsers() {
           >
             <PlusIcon width={16} height={16} />
             Nuevo usuario
+          </button>
+        </div>
+
+        <div className="card mb-6 flex items-center justify-between gap-4 p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-[var(--color-brand-soft)] text-[var(--color-brand)]">
+              <MapPinIcon width={18} height={18} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-[var(--color-ink)]">Ubicación manual</p>
+              <p className="text-xs text-[var(--color-muted)]">
+                Permite fijar lat/long a mano en vez de usar el GPS del dispositivo. Útil para
+                kioskos fijos o pruebas; desactívalo para exigir siempre GPS real.
+              </p>
+            </div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={appSettings?.allowManualLocation ?? false}
+            onClick={() => updateSettings.mutate(!(appSettings?.allowManualLocation ?? false))}
+            disabled={!appSettings || updateSettings.isPending}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+              appSettings?.allowManualLocation ? "bg-[var(--color-brand)]" : "bg-[var(--color-border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                appSettings?.allowManualLocation ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
           </button>
         </div>
 

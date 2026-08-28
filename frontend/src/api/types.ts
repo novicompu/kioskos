@@ -90,3 +90,12 @@ export interface UsersListResponse {
   status: "success" | "error";
   users: ManagedUser[];
 }
+
+export interface AppSettings {
+  allowManualLocation: boolean;
+}
+
+export interface SettingsResponse {
+  status: "success" | "error";
+  settings: AppSettings;
+}
