@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Product, ProductDetailResponse, StockEntry } from "../api/types";
-import { CloseIcon, BuildingIcon, AlertIcon, BoxIcon, ExpandIcon } from "./icons";
+import { CloseIcon, BuildingIcon, AlertIcon, BoxIcon, ExpandIcon, PhoneIcon, UserIcon } from "./icons";
 import { ProductImage } from "./ProductImage";
 import { ImageLightbox } from "./ImageLightbox";
 import { useMbaStatus } from "../hooks/useMbaStatus";
@@ -133,19 +133,9 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
             </span>
           </div>
 
-          {mbaDown && (
-            <div className="mt-6 flex items-start gap-2 rounded-[var(--radius-md)] bg-[var(--color-warning-soft)] px-3.5 py-2.5 text-xs text-[var(--color-warning)]">
-              <AlertIcon width={15} height={15} className="mt-0.5 shrink-0" />
-              <span>
-                El servicio de stock en tiempo real (MBA) no está disponible: los números que ves
-                pueden ser de la última sincronización, no en vivo.
-              </span>
-            </div>
-          )}
-
-          <div className={`flex flex-wrap items-center justify-between gap-2 ${mbaDown ? "mt-3" : "mt-6"}`}>
-            <h3 className="text-sm font-bold text-[var(--color-ink)]">Stock por bodega</h3>
-            {!isLoading && !isError && stock.length > 0 && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-[var(--color-ink)]">Disponibilidad</h3>
+            {!mbaDown && !isLoading && !isError && stock.length > 0 && (
               <span className="chip shrink-0 bg-[var(--color-brand-soft)] text-[var(--color-brand-strong)]">
                 <BoxIcon width={13} height={13} />
                 {totalAvailable} en total
@@ -168,7 +158,51 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
             </p>
           )}
 
-          {data && !isLoading && !isError && (
+          {/* Con MBA caido no confiamos en los numeros de stock (pueden ser de
+              la ultima sincronizacion): en vez de intentar mostrarlos, se le
+              pide al usuario llamar a la tienda y se le dan los datos de
+              contacto de la(s) bodega(s) directamente aqui. */}
+          {data && !isLoading && !isError && mbaDown && (
+            <>
+              <p className="mt-3 flex items-start gap-2 text-sm text-[var(--color-body)]">
+                <AlertIcon width={16} height={16} className="mt-0.5 shrink-0 text-[var(--color-warning)]" />
+                No podemos confirmar el stock en este momento. Llama a la tienda para consultar
+                disponibilidad de este producto.
+              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                {(data.warehouses ?? []).map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex flex-col gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] px-4 py-3 text-sm"
+                  >
+                    <span className="flex items-center gap-2 font-semibold text-[var(--color-ink)]">
+                      <BuildingIcon width={16} height={16} className="shrink-0 text-[var(--color-muted)]" />
+                      <span className="truncate">{w.friendly_name}</span>
+                    </span>
+                    {w.administrator_name && (
+                      <span className="flex items-center gap-2 text-[var(--color-body)]">
+                        <UserIcon width={14} height={14} className="shrink-0 text-[var(--color-muted)]" />
+                        {w.administrator_name}
+                      </span>
+                    )}
+                    {w.contact_phone && (
+                      <span className="flex items-center gap-2 font-mono text-[var(--color-body)]">
+                        <PhoneIcon width={14} height={14} className="shrink-0 text-[var(--color-muted)]" />
+                        {w.contact_phone}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {(data.warehouses ?? []).length === 0 && (
+                  <p className="text-sm text-[var(--color-muted)]">
+                    No encontramos datos de contacto de la bodega.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {data && !isLoading && !isError && !mbaDown && (
             <>
               {stock.length === 0 ? (
                 <p className="mt-3 text-sm text-[var(--color-muted)]">{data.message}</p>
