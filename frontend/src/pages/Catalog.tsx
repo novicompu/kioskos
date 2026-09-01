@@ -169,6 +169,7 @@ export function Catalog() {
         <ProductDetailSheet
           product={selectedProduct}
           coords={coords}
+          warehouses={data?.warehouses ?? []}
           onClose={() => setSelectedProduct(null)}
         />
       )}

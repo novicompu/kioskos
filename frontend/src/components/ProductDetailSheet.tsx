@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { Product, ProductDetailResponse, StockEntry } from "../api/types";
+import type { Product, ProductDetailResponse, StockEntry, Warehouse } from "../api/types";
 import { CloseIcon, BuildingIcon, AlertIcon, BoxIcon, ExpandIcon, PhoneIcon, UserIcon } from "./icons";
 import { ProductImage } from "./ProductImage";
 import { ImageLightbox } from "./ImageLightbox";
@@ -10,6 +10,11 @@ import { useMbaStatus } from "../hooks/useMbaStatus";
 interface Props {
   product: Product;
   coords: { lat: number; long: number };
+  // Bodegas ya cargadas por el catalogo (misma respuesta que trae los
+  // productos). Se usan como respaldo inmediato para mostrar el contacto
+  // cuando MBA esta caido, sin depender de la consulta de stock (lenta:
+  // golpea la API externa en vivo).
+  warehouses: Warehouse[];
   onClose: () => void;
 }
 
@@ -41,7 +46,7 @@ const TIER_STYLES: Record<StockTier, { text: string; dot: string; label: (n: num
   },
 };
 
-export function ProductDetailSheet({ product, coords, onClose }: Props) {
+export function ProductDetailSheet({ product, coords, warehouses, onClose }: Props) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const imageSrc = product.imagenes[0];
 
@@ -53,8 +58,19 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
+  // Antes de intentar el stock en vivo, se verifica si MBA esta activo (el
+  // estado se hace polling en el backend, ver useMbaStatus -- esta consulta
+  // es liviana, nunca golpea la API externa directamente, asi que resuelve
+  // rapido). Si esta caido, no tiene sentido pedir el stock: la consulta a
+  // Novisuite es lenta cuando MBA no responde (se queda esperando el
+  // fallback del lado de ellos), asi que se omite y se muestra de una vez
+  // el aviso de llamar a la tienda con los datos que ya tenemos.
+  const { data: mbaStatus, isLoading: mbaStatusLoading } = useMbaStatus();
+  const mbaDown = mbaStatus?.status === "disconnected";
+
   // Esta es la ÚNICA consulta de stock: se dispara solo al abrir el detalle
-  // de un producto puntual, nunca para todo el catálogo.
+  // de un producto puntual, nunca para todo el catálogo, y solo si MBA esta
+  // arriba (ver comentario de mbaDown).
   const { data, isLoading, isError } = useQuery({
     queryKey: ["product-detail", product.product_code, coords.lat, coords.long],
     queryFn: async () => {
@@ -64,6 +80,7 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
       );
       return data;
     },
+    enabled: !mbaStatusLoading && !mbaDown,
     staleTime: 30_000,
   });
 
@@ -72,13 +89,6 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
     [data],
   );
   const totalAvailable = stock.reduce((sum, s) => sum + s.available, 0);
-
-  // Antes de mostrar el stock en vivo, se verifica si MBA esta activo (el
-  // estado se hace polling en el backend, ver useMbaStatus). Si esta
-  // caido, la API igual responde con el stock local descargado como
-  // respaldo -- se avisa para que quede claro que puede no ser en vivo.
-  const { data: mbaStatus } = useMbaStatus();
-  const mbaDown = mbaStatus?.status === "disconnected";
 
   return (
     <div
@@ -143,7 +153,7 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
             )}
           </div>
 
-          {isLoading && (
+          {(mbaStatusLoading || (!mbaDown && isLoading)) && (
             <div className="mt-3 flex flex-col gap-2">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-14 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]" />
@@ -151,18 +161,20 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
             </div>
           )}
 
-          {isError && (
+          {!mbaDown && isError && (
             <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-danger)]">
               <AlertIcon width={16} height={16} />
               No pudimos consultar el stock de este producto.
             </p>
           )}
 
-          {/* Con MBA caido no confiamos en los numeros de stock (pueden ser de
-              la ultima sincronizacion): en vez de intentar mostrarlos, se le
-              pide al usuario llamar a la tienda y se le dan los datos de
-              contacto de la(s) bodega(s) directamente aqui. */}
-          {data && !isLoading && !isError && mbaDown && (
+          {/* Con MBA caido no tiene sentido pedir el stock en vivo (la
+              consulta a Novisuite se vuelve lenta cuando MBA no responde) ni
+              confiar en un numero desactualizado: se omite esa consulta
+              (ver `enabled` arriba) y se muestra de una vez el aviso de
+              llamar a la tienda, con los datos de contacto que el catalogo
+              ya trajo. */}
+          {!mbaStatusLoading && mbaDown && (
             <>
               <p className="mt-3 flex items-start gap-2 text-sm text-[var(--color-body)]">
                 <AlertIcon width={16} height={16} className="mt-0.5 shrink-0 text-[var(--color-warning)]" />
@@ -170,7 +182,7 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
                 disponibilidad de este producto.
               </p>
               <div className="mt-3 flex flex-col gap-2">
-                {(data.warehouses ?? []).map((w) => (
+                {warehouses.map((w) => (
                   <div
                     key={w.id}
                     className="flex flex-col gap-1.5 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] px-4 py-3 text-sm"
@@ -193,7 +205,7 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
                     )}
                   </div>
                 ))}
-                {(data.warehouses ?? []).length === 0 && (
+                {warehouses.length === 0 && (
                   <p className="text-sm text-[var(--color-muted)]">
                     No encontramos datos de contacto de la bodega.
                   </p>
@@ -202,7 +214,7 @@ export function ProductDetailSheet({ product, coords, onClose }: Props) {
             </>
           )}
 
-          {data && !isLoading && !isError && !mbaDown && (
+          {!mbaDown && data && !isLoading && !isError && (
             <>
               {stock.length === 0 ? (
                 <p className="mt-3 text-sm text-[var(--color-muted)]">{data.message}</p>
